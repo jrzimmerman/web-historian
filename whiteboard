@@ -1,0 +1,23 @@
+Basic requirements:
+
+Core Application
+
+1. Make the tests pass. (run tests using npm test)
+
+2. If users submit a page you already have, you should auto-redirect them to
+either your archived version of that page, or to `loading.html` if the page
+has not yet been loaded.
+
+3. Write a script in workers/htmlfetcher.js that uses the code in helpers/archive-helpers.js to download files when it runs (and then exit).
+
+NOTES:
+The test for the downloadUrls helper might fail incorrectly if downloads take a long time. If this happens to you, just increase the timeout in the test to a longer wait time.
+The tests expect your server to handle and return incoming JSON data, but the browsers native form handling will use form-encoding instead of JSON. You can either use jQuery to send JSON from the client, or modify the tests to send form-encoded data.
+
+4. Run the above script every minute by using cron. Keep in mind:
+5. console.log (which uses stdout) won't appear when run from a cronjob. Write logging messages to a file instead.
+6. Paths to files or scripts in crontab have to be absolute, not relative.
+  Absolute Path: /Users/UserName/file.html
+  Relative Path: ./nearby_file.html
+
+Note: most systems provide a means of creating absolute paths that are not host-specific. That is, you can dynamically pull information from the local system to help construct the URL. This allows you to write code that usually doesn't have to be edited when you move an application from one host to another. When developing production applications, you will want to take this approach.
