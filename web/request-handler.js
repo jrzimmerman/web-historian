@@ -1,47 +1,53 @@
 var path = require('path');
 var archive = require('../helpers/archive-helpers');
-// require more modules/folders here!
-var utils = require('./http-helpers');
-var urlParser = require('url');
 
+var url = require('url');
+var helpers = require('./http-helpers');
+
+var getSite = function(request, response){
+  var urlPath = url.parse(request.url).pathname;
+
+  if (urlPath === '/') { urlPath = '/index.html'; }
+
+  helpers.serveAssets(response, urlPath, function() {
+    if (urlPath[0] === '/') {
+      urlPath = urlPath.slice(1);
+    }
+
+    archive.isUrlInList(urlPath, function(found){
+      if (found) {
+        helpers.sendRedirect(response, '/loading.html');
+      } else {
+        helpers.send404(response);
+      }
+    });
+  });
+};
+
+var saveSite = function(request, response){
+  helpers.collectData(request, function(data) {
+    var url = JSON.parse(data).url.replace('http://', '');
+    archive.isUrlInList(url, function(found){
+      if (found) {
+        archive.isUrlArchived(url, function(exists) {
+          if (exists) {
+            helpers.sendRedirect(response, '/' + url);
+          } else {
+            helpers.sendRedirect(response, '/loading.html');
+          }
+        });
+      } else {
+        archive.addUrlToList(url, function(){
+          helpers.sendRedirect(response, '/loading.html');
+        });
+      }
+    });
+  });
+};
 
 var actions = {
-  'GET': function(req, res) {
-
-    var parts = urlParser.parse(req.url);
-    var urlPath = parts.pathname === '/' ? '/index.html' : parts.pathname;
-    utils.serveAssets(res, urlPath, function() {
-      archive.isUrlInList(urlPath.slice(1), function(found) {
-        if (found) {
-          utils.sendRedirect(res, '/loading.html');
-        } else {
-          utils.send404(res);
-        }
-      });
-    });
-  },
-  'POST': function(req, res) {
-
-
-    utils.collectData(req, function(data) {
-      var url = data.split('=')[1];
-      archive.isUrlInList(url, function(found) {
-        if (found) {
-          archive.isUrlArchived(url, function(exists) {
-            if (exists) {
-              utils.sendRedirect(res, '/'+url);
-            } else {
-              utils.sendRedirect(res, '/loading.html'); 
-            }
-          });
-        } else {
-          archive.addUrlToList(url, function() {
-            utils.sendRedirect(res, '/loading.html');
-          });
-        }
-      });
-    });
-  }
+  'GET': getSite,
+  'POST': saveSite
 };
 
 exports.handleRequest = function (req, res) {
@@ -53,4 +59,3 @@ exports.handleRequest = function (req, res) {
     helpers.send404(response);
   }
 };
-

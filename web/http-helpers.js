@@ -11,8 +11,8 @@ exports.headers = headers = {
   'Content-Type': "text/html"
 };
 
-
 exports.serveAssets = function(res, asset, callback) {
+
   var encoding = {encoding: 'utf8'};
   var readFile = Q.denodeify(fs.readFile);
 
@@ -27,7 +27,7 @@ exports.serveAssets = function(res, asset, callback) {
     }, function(err) {
       callback ? callback() : exports.send404(res);
     });
-};
+  };
 
 exports.sendRedirect = function(response, location, status){
   status = status || 302;
