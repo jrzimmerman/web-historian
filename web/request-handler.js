@@ -1,20 +1,56 @@
 var path = require('path');
 var archive = require('../helpers/archive-helpers');
-var fs = require('fs');
-var utils = require('./http-helpers');
 // require more modules/folders here!
+var utils = require('./http-helpers');
+var urlParser = require('url');
 
 
-exports.handleRequest = function (req, res) {
-  if(req.method === 'GET') {
-    // req.url('/', function() { res.on('')});
-    if(req.url === '/') {
-      fs.readFile('./web/public/index.html', function(err, data){
-        if(err) throw err;
-        // console.log(data);
-        res.writeHead(200, utils.headers);
-        res.end(data);
+var actions = {
+  'GET': function(req, res) {
+
+    var parts = urlParser.parse(req.url);
+    var urlPath = parts.pathname === '/' ? '/index.html' : parts.pathname;
+    utils.serveAssets(res, urlPath, function() {
+      archive.isUrlInList(urlPath.slice(1), function(found) {
+        if (found) {
+          utils.sendRedirect(res, '/loading.html');
+        } else {
+          utils.send404(res);
+        }
       });
-    }
+    });
+  },
+  'POST': function(req, res) {
+
+
+    utils.collectData(req, function(data) {
+      var url = data.split('=')[1];
+      archive.isUrlInList(url, function(found) {
+        if (found) {
+          archive.isUrlArchived(url, function(exists) {
+            if (exists) {
+              utils.sendRedirect(res, '/'+url);
+            } else {
+              utils.sendRedirect(res, '/loading.html'); 
+            }
+          });
+        } else {
+          archive.addUrlToList(url, function() {
+            utils.sendRedirect(res, '/loading.html');
+          });
+        }
+      });
+    });
   }
 };
+
+exports.handleRequest = function (req, res) {
+  var handler = actions[req.method];
+
+  if (handler) {
+    handler(req, res);
+  } else {
+    helpers.send404(response);
+  }
+};
+

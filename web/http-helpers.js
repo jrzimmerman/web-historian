@@ -1,6 +1,7 @@
 var path = require('path');
 var fs = require('fs');
 var archive = require('../helpers/archive-helpers');
+var Q = require('q');
 
 exports.headers = headers = {
   "access-control-allow-origin": "*",
@@ -10,13 +11,46 @@ exports.headers = headers = {
   'Content-Type': "text/html"
 };
 
+
 exports.serveAssets = function(res, asset, callback) {
-  // Write some code here that helps serve up your static files!
-  // (Static files are things like html (yours or archived from others...),
-  // css, or anything that doesn't change often.)
-  
+  var encoding = {encoding: 'utf8'};
+  var readFile = Q.denodeify(fs.readFile);
+
+  readFile(archive.paths.siteAssets + asset, encoding)
+    .then(function(contents) {
+      contents && exports.sendResponse(res, contents);
+    }, function(err) {
+      return readFile(archive.paths.archivedSites + asset, encoding);
+    })
+    .then(function(contents) {
+      contents && exports.sendResponse(res, contents);
+    }, function(err) {
+      callback ? callback() : exports.send404(res);
+    });
 };
 
+exports.sendRedirect = function(response, location, status){
+  status = status || 302;
+  response.writeHead(status, {Location: location});
+  response.end();
+};
 
+exports.sendResponse = function(response, obj, status){
+  status = status || 200;
+  response.writeHead(status, headers);
+  response.end(obj);
+};
 
-// As you progress, keep thinking about what helper functions you can put here!
+exports.collectData = function(request, callback){
+  var data = "";
+  request.on("data", function(chunk){
+    data += chunk;
+  });
+  request.on("end", function(){
+    callback(data);
+  });
+};
+
+exports.send404 = function(response){
+  exports.sendResponse(response, '404: Page not found', 404);
+};
